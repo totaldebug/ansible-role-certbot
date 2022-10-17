@@ -26,19 +26,19 @@ By default, this role configures a cron job to run under the provided user accou
 
 ### Automatic Certificate Generation
 
-Currently the `standalone` and `webroot` method are supported for generating new certificates using this role.
+Currently there are three built-in methods for generating new certificates using this role: `standalone`, `webroot` and `dns`. Other methods (e.g. using nginx or apache) may be added in the future.
 
 **For a complete example**: see the fully functional test playbook in [molecule/default/playbook-standalone-nginx-aws.yml](molecule/default/playbook-standalone-nginx-aws.yml).
 
     certbot_create_if_missing: false
 
-Set `certbot_create_if_missing` to `yes` or `True` to let this role generate certs. 
+Set `certbot_create_if_missing` to `yes` or `True` to let this role generate certs.
 
     certbot_create_method: standalone
 
-Set the method used for generating certs with the `certbot_create_method` variable — current allowed values are: `standalone` or `webroot`.
+Set the method used for generating certs with the `certbot_create_method` variable — current allowed values are: `standalone`, `dns` or `webroot`.
 
-    certbot_testmode: false
+    certbot_use_staging_server: false
 
 Enable test mode to only run a test request without actually creating certificates.
 
@@ -73,6 +73,58 @@ The `certbot_create_command` defines the command used to generate the cert.
 Services that should be stopped while `certbot` runs it's own standalone server on ports 80 and 443. If you're running Apache, set this to `apache2` (Ubuntu), or `httpd` (RHEL), or if you have Nginx on port 443 and something else on port 80 (e.g. Varnish, a Java app, or something else), add it to the list so it is stopped when the certificate is generated.
 
 These services will only be stopped the first time a new cert is generated.
+
+#### DNS Certificate Generation
+
+To use DNS challenge method when creating certificates you must use: `certbot_create_method: dns`. You have the following parameters:
+
+    certbot_dns_plugin: *dns-plugins*
+
+    certbot_dns_target_server: *target.IP*
+    certbot_dns_target_server_port: *DNS.Port*
+    certbot_dns_tsig_keyname: "*tsig_key*"
+    certbot_dns_key_secret: "*key/api_secret*"
+    certbot_dns_key_algorithm: "*tsig_key_algorithm*"
+
+If you are using another plugin instead of RFC2136, like CloudFlare or DigitalOcean `certbot_dns_key_secret` will be used as **API Token** and you do not need other parameters.
+
+DNS TSIG keys can be generate using `dnssec-keygen -a HMAC-SHA256 -b 256 -n HOST certbot.` but futher details and configurations are not covered here. The same applies for configuring DNS (BIND), but sample configuration is shown using BIND/RFC2136:
+
+```
+key certbot. {
+  algorithm hmac-sha256;
+  secret "9arciOclzevu7rEvSww0cpiOu5aPo65NFMBkcEuad5U=";
+};
+zone "example.com" {
+  type master;
+  ...
+  allow-update { key certbot. };
+};
+```
+
+#### DNS Plugins
+
+Currently there are three built-in methods for **dns-plugins**: `rfc2136`, `cloudflare` and `digitalocean`. You can review DNS plugins supported by Certbot [here](https://eff-certbot.readthedocs.io/en/stable/using.html#dns-plugins). Other methods (e.g. using nginx or apache and a webroot) may be added in the future.
+If you want to use other credentials files using other plugins you have to set `certbot_dns_credentials_custom_file: <file.path>`.
+
+#### DNS Integration - Deploy Hook
+
+When using DNS integration, you do not need to stop/start service after certificate is generated. You only need to restart/reload service. There is a nice feature that already assembles _fullchain.pem_ and _privkey.pem_ into one file for use directly on haproxy. You use can enable this behavior by adding 'haproxy' to `certbot_create_dns_deploy_hook_services` variable:
+
+    certbot_create_dns_deploy_hook_services:
+      - haproxy
+
+It works exactly the same as `certbot_create_standalone_stop_services`.
+
+Configuring haproxy will not be included, just the "hook" for certbot to make easier for configurating it as certbot _knowns_ when a new certificate is issued/renewed.
+
+#### Testing Certificates - Staging Server
+
+To use Lets Encrypt Staging CA (Testing Certificate) instead of "Production" CA, you can set `certbot_use_staging_server` to `true`. Defaults to `false`.
+
+#### Delete Certificates
+
+To delete certificates prior generating them you must set `certbot_delete_certificate` to `true`. Defaults to `false`. If you want to fully remove certificates and not generate them anymore you must set `certbot_create_if_missing` to `false`.
 
 ### Snap Installation
 
@@ -113,12 +165,12 @@ None.
 ## Example Playbook
 
     - hosts: servers
-    
+
       vars:
         certbot_auto_renew_user: your_username_here
         certbot_auto_renew_minute: "20"
         certbot_auto_renew_hour: "5"
-    
+
       roles:
         - geerlingguy.certbot
 
@@ -138,13 +190,16 @@ You can manually create certificates using the `certbot` (or `certbot-auto`) scr
 
 If you want to fully automate the process of adding a new certificate, but don't want to use this role's built in functionality, you can do so using the command line options to register, accept the terms of service, and then generate a cert using the standalone server:
 
-  1. Make sure any services listening on ports 80 and 443 (Apache, Nginx, Varnish, etc.) are stopped.
-  2. Register with something like `certbot register --agree-tos --email [your-email@example.com]`
+1. Make sure any services listening on ports 80 and 443 (Apache, Nginx, Varnish, etc.) are stopped.
+2. Register with something like `certbot register --agree-tos --email [your-email@example.com]`
+
+
     - Note: You won't need to do this step in the future, when generating additional certs on the same server.
-  3. Generate a cert for a domain whose DNS points to this server: `certbot certonly --noninteractive --standalone -d example.com -d www.example.com`
-  4. Re-start whatever was listening on ports 80 and 443 before.
-  5. Update your webserver's virtualhost TLS configuration to point at the new certificate (`fullchain.pem`) and private key (`privkey.pem`) Certbot just generated for the domain you passed in the `certbot` command.
-  6. Reload or restart your webserver so it uses the new HTTPS virtualhost configuration.
+
+3. Generate a cert for a domain whose DNS points to this server: `certbot certonly --noninteractive --standalone -d example.com -d www.example.com`
+4. Re-start whatever was listening on ports 80 and 443 before.
+5. Update your webserver's virtualhost TLS configuration to point at the new certificate (`fullchain.pem`) and private key (`privkey.pem`) Certbot just generated for the domain you passed in the `certbot` command.
+6. Reload or restart your webserver so it uses the new HTTPS virtualhost configuration.
 
 ### Certbot certificate auto-renewal
 

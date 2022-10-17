@@ -3,19 +3,12 @@ dependencies: []
 
 galaxy_info:
   role_name: certbot
-  author: geerlingguy
+  author: totaldebug
   description: "Installs and configures Certbot (for Let's Encrypt)."
-  company: "Midwestern Mac, LLC"
+  company: "totaldebug"
   license: "license (BSD, MIT)"
-  min_ansible_version: 2.4
+  min_ansible_version: 2.9
   platforms:
-    - name: EL
-      versions:
-        - 7
-        - 8
-    - name: Fedora
-      versions:
-        - all
     - name: Ubuntu
       versions:
         - all

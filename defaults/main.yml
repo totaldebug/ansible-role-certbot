@@ -6,13 +6,28 @@ certbot_auto_renew_hour: "3"
 certbot_auto_renew_minute: "30"
 certbot_auto_renew_options: "--quiet --no-self-upgrade"
 
-certbot_testmode: false
+# Enable to use staging server instead of production (useful for testing)
+certbot_use_staging_server: false
+# Enable delete certificates prior generating
+certbot_delete_certificate: false
+
 certbot_hsts: false
 
 
 # Parameters used when creating new Certbot certs.
 certbot_create_if_missing: false
 certbot_create_method: standalone
+# certbot_create_method: dns
+
+# Parameters DNS Plugins (used when certbot_create_method = dns)
+# certbot_dns_plugin: rfc2136
+# certbot_dns_credentials_custom_file: <file-path> # use when  plugin is != rfc2136
+# certbot_dns_target_server: 127.0.0.1
+# certbot_dns_target_server_port: 53
+# certbot_dns_tsig_keyname: "certbot."
+# certbot_dns_key_secret: "azertyAZERTY123456"
+# certbot_dns_key_algorithm: "HMAC-MD5"
+
 certbot_admin_email: email@example.com
 
 # Default webroot, overwritten by individual per-cert webroot directories
@@ -30,12 +45,12 @@ certbot_certs: []
 certbot_create_command: >-
   {{ certbot_script }} certonly --{{ certbot_create_method  }}
   {{ '--hsts' if certbot_hsts else '' }}
-  {{ '--test-cert' if certbot_testmode else '' }}
+  {{ '--test-cert' if certbot_use_staging_server else '' }}
   --noninteractive --agree-tos
   --email {{ cert_item.email | default(certbot_admin_email) }}
   {{ '--webroot-path ' if certbot_create_method == 'webroot'  else '' }}
   {{ cert_item.webroot | default(certbot_webroot) if certbot_create_method == 'webroot' else '' }}
-  -d {{ cert_item.domains | join(',') }}
+  --domains {{ cert_item.domains | join(',') }} --expand
   {{ '--pre-hook /etc/letsencrypt/renewal-hooks/pre/stop_services'
     if certbot_create_standalone_stop_services
   else '' }}
@@ -43,10 +58,32 @@ certbot_create_command: >-
     if certbot_create_standalone_stop_services
   else '' }}
 
+certbot_dns_create_command: >-
+  {{ certbot_script }} certonly --noninteractive --agree-tos
+  {{ '--test-cert'
+    if certbot_use_staging_server
+  else '' }}
+  --dns-{{ certbot_dns_plugin }} --dns-{{ certbot_dns_plugin }}-credentials {{ certbot_dns_credentials_file }}
+  --email {{ cert_item.email | default(certbot_admin_email) }}
+  --domains {{ cert_item.domains | join(',') }} --expand
+  {{ '--deploy-hook /etc/letsencrypt/renewal-hooks/deploy/deploy_hook.sh'
+    if certbot_create_dns_deploy_hook_services
+  else '' }}
+
+certbot_create_dns_deploy_hook_services:
+  - haproxy
+  # - nginx
+  # - apache
+
 certbot_create_standalone_stop_services:
   - nginx
   # - apache
   # - varnish
+
+certbot_delete_command: >-
+  {{ certbot_script }} delete --noninteractive
+  --cert-name {{ cert_item.domains | first | replace('*.', '') }}
+
 
 # Available options: 'package', 'snap', 'source'.
 certbot_install_method: 'package'

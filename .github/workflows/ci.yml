@@ -10,7 +10,7 @@ name: CI
 
 defaults:
   run:
-    working-directory: 'geerlingguy.certbot'
+    working-directory: 'totaldebug.certbot'
 
 jobs:
 
@@ -21,7 +21,7 @@ jobs:
       - name: Check out the codebase.
         uses: actions/checkout@v2
         with:
-          path: 'geerlingguy.certbot'
+          path: 'totaldebug.certbot'
 
       - name: Set up Python 3.
         uses: actions/setup-python@v2
@@ -41,26 +41,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - distro: centos8
-            playbook: converge.yml
-            experimental: false
-          - distro: centos7
-            playbook: converge.yml
-            experimental: false
-          - distro: ubuntu1804
+          - distro: ubuntu2204
             playbook: converge.yml
             experimental: false
           - distro: debian10
             playbook: converge.yml
             experimental: false
-          # Source install started failing recently.
-          # - distro: centos7
-          #   playbook: playbook-source-install.yml
-          #   experimental: false
-
-          - distro: centos7
-            playbook: playbook-snap-install.yml
-            experimental: true
 
     steps:
       - name: Check out the codebase.
