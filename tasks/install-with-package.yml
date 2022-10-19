@@ -8,6 +8,11 @@
     state: present
   when: certbot_dns_plugin is defined
 
+- name: Install Nginx Plugin.
+  package:
+    name: "python3-certbot-nginx"
+    state: present
+  when: certbot_nginx is defined
 
 - name: Set Certbot script variable.
   set_fact:

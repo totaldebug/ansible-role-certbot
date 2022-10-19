@@ -13,6 +13,7 @@ certbot_delete_certificate: false
 
 certbot_hsts: false
 
+certbot_nginx: false
 
 # Parameters used when creating new Certbot certs.
 certbot_create_if_missing: false
