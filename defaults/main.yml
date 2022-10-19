@@ -44,7 +44,8 @@ certbot_certs: []
 #     - example3.com
 
 certbot_create_command: >-
-  {{ certbot_script }} {{ '--nginx' if certbot_nginx else '' }} certonly --{{ certbot_create_method  }}
+  {{ certbot_script }} {{ '-i nginx' if certbot_nginx else '' }} certonly
+  {{ '-i nginx -a --' if certbot_nginx else '--'}}{{ certbot_create_method  }}
   {{ '--hsts' if certbot_hsts else '' }}
   {{ '--test-cert' if certbot_use_staging_server else '' }}
   --noninteractive --agree-tos
@@ -60,11 +61,10 @@ certbot_create_command: >-
   else '' }}
 
 certbot_dns_create_command: >-
-  {{ certbot_script }} {{ '--nginx' if certbot_nginx else '' }} certonly --noninteractive --agree-tos
-  {{ '--test-cert'
-    if certbot_use_staging_server
-  else '' }}
-  --dns-{{ certbot_dns_plugin }} --dns-{{ certbot_dns_plugin }}-credentials {{ certbot_dns_credentials_file }}
+  {{ certbot_script }} certonly --noninteractive --agree-tos
+  {{ '--test-cert' if certbot_use_staging_server else '' }}
+  {{ '-i nginx -a dns-' if certbot_nginx '--dns-' }}{{ certbot_dns_plugin }}
+  --dns-{{ certbot_dns_plugin }}-credentials {{ certbot_dns_credentials_file }}
   --email {{ cert_item.email | default(certbot_admin_email) }}
   --domains {{ cert_item.domains | join(',') }} --expand
   {{ '--deploy-hook /etc/letsencrypt/renewal-hooks/deploy/deploy_hook.sh'
