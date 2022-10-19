@@ -44,7 +44,7 @@ certbot_certs: []
 #     - example3.com
 
 certbot_create_command: >-
-  {{ certbot_script }} certonly --{{ certbot_create_method  }}
+  {{ certbot_script }} {{ '--nginx' if certbot_nginx else '' }} certonly --{{ certbot_create_method  }}
   {{ '--hsts' if certbot_hsts else '' }}
   {{ '--test-cert' if certbot_use_staging_server else '' }}
   --noninteractive --agree-tos
@@ -60,7 +60,7 @@ certbot_create_command: >-
   else '' }}
 
 certbot_dns_create_command: >-
-  {{ certbot_script }} certonly --noninteractive --agree-tos
+  {{ certbot_script }} {{ '--nginx' if certbot_nginx else '' }} certonly --noninteractive --agree-tos
   {{ '--test-cert'
     if certbot_use_staging_server
   else '' }}
@@ -85,9 +85,8 @@ certbot_delete_command: >-
   {{ certbot_script }} delete --noninteractive
   --cert-name {{ cert_item.domains | first | replace('*.', '') }}
 
-
 # Available options: 'package', 'snap', 'source'.
-certbot_install_method: 'package'
+certbot_install_method: "package"
 
 # Source install configuration.
 certbot_repo: https://github.com/certbot/certbot.git
